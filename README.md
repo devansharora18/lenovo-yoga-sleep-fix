@@ -87,12 +87,6 @@ To launch the tray app automatically when you log in:
 
 Replace `/home/youruser/lenovo-yoga-sleep-fix/` with the actual path to your script.
 
-## File Structure
-
-```
-├── sleep_toggle.py   # Main PyQt6 tray app
-└── README.md             # This documentation
-```
 
 ## Contributing
 
