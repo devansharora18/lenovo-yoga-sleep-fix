@@ -6,7 +6,7 @@ import threading
 import time
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 def is_sleep_masked():
     result = subprocess.run(["systemctl", "is-enabled", "sleep.target"],
@@ -31,7 +31,7 @@ def create_circle_icon(color: str) -> QIcon:
     painter.end()
     return QIcon(pixmap)
 
-def monitor_lid():
+def monitor_lid_once(app_ref):
     lid_path = "/proc/acpi/button/lid/LID0/state"
     last_state = "open"
 
@@ -44,9 +44,22 @@ def monitor_lid():
             is_closed = False
 
         if is_closed and last_state != "closed" and is_sleep_masked():
+            # Lock the screen
             subprocess.run(["loginctl", "lock-session"])
+
+            # Start bash watcher to relaunch tray app on lid open
+            subprocess.Popen([
+                "bash",
+                "/home/devansharora18/Documents/lenovo-yoga-sleep-fix/lid_sleep_manager.sh"
+            ])
+
+            # Schedule app quit from main thread
+            QTimer.singleShot(100, app_ref.quit)
+            return
+
         last_state = "closed" if is_closed else "open"
         time.sleep(1)
+
 
 class SleepTrayApp:
     def __init__(self):
@@ -69,8 +82,7 @@ class SleepTrayApp:
         self.update_icon()
         self.tray.setVisible(True)
 
-        # Start lid monitoring thread
-        threading.Thread(target=monitor_lid, daemon=True).start()
+        threading.Thread(target=monitor_lid_once, args=(self.app,), daemon=True).start()
 
         sys.exit(self.app.exec())
 
